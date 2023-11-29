@@ -1,0 +1,8 @@
+﻿  RainfallList.cpp
+  Sequence.cpp
+  RainfallList.h
+  test.cpp
+C:\Users\Niklas\Projects\C++\cs-32\homework-1 (visual studio)\problem-4\test.cpp(1,10): warning C4067: unexpected tokens following preprocessor directive - expected a newline
+  Generating Code...
+x64\Debug\RainfallList.obj : warning LNK4042: object specified more than once; extras ignored
+  problem-4.vcxproj -> C:\Users\Niklas\Projects\C++\cs-32\homework-1 (visual studio)\problem-4\x64\Debug\problem-4.exe
