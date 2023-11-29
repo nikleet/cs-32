@@ -1,0 +1,97 @@
+ * CS 32, Project 4, report.txt
+ * Name: Niklas Leet
+ * UID: 405795083
+ * Date: 6/5/2023
+
+                                                Project 4 Report
+
+=================================================================================================================
+
+DictionaryImpl class delcaration:
+
+ class DictionaryImpl
+{
+    public:
+        DictionaryImpl(int maxBuckets);
+        ~DictionaryImpl() { delete[] m_words; }
+        void insert(string word);
+        void lookup(string letters, void callback(string)) const;
+    private:
+        struct Entry {
+            string word;
+            string sorted;
+        };
+        int m_buckets;
+        list<Entry>* m_words;
+        // this function hash() modifies s, sorting the characters string s alphabetically
+        unsigned int hash(string& s) const;
+};
+
+=================================================================================================================
+
+ Description of data structures used:
+
+    DictionaryImpl stores a dictionary using a hash table implemented as an array, m_words, 
+    a number maxBuckets (specified by constructor) of pointers to lists. These lists represent 
+    buckets, and each contains pointers to struct objects of type Entry, which have two members: 
+    'word' and 'sorted'. 'Word' stores a string representing the dictionary entry and 'sorted'
+    a string of that entry's characters sorted alphabetically. The sorted version of every entry
+    is stored to speed up collision checking in our algorithms.
+
+=================================================================================================================
+
+Description of algorithms:
+
+void DictionaryImpl::insert(string word)
+
+    When the user inserts a new dictionary entry, the default (from the spec) implementation of removeNonLetters
+    is called first. Then, the hash function is called on a copy of the parameter word, and this copy is 
+    alphabetically sorted by the hash function. Then, the word and its sorted copy are sorted in an Entry object
+    and that Entry is then pushed back onto the list at the keyed position in m_words dictated by the hash function.
+
+unsigned int DictionaryImpl::hash(string& s) const
+    
+    This function simply sorts the string parameter s alphabetically using std::sort, and returns the result 
+    of the std::hash function applied to the sorted string % the number of buckets. Note that std::sort sorts
+    s in place, and s is allowed to be modified by the function. So, s will be sorted after hash is called.
+    We take advantage of this later on in our lookup function to check for accidental collisions.
+    By using std::hash % number of buckets we generate a fairly uniform distribution of keys across our hash 
+    table which are sufficiently unique to minimize accidental collisions. Sorting the string before calling
+    std::hash ensures that all anagrams of a word generate the same key, and hence anagrams of the same set 
+    of characters should be stored in the same bucket.
+
+void DictionaryImpl::lookup(string letters, void callback(string)) const
+
+    Psuedo-code:
+        
+        if callback is nullptr
+            return
+        
+        removeNonLetters(letters)
+        if letters is empty
+            return
+
+        string sorted_letters(letters)
+        int key = hash(sorted_letters)
+        create a pointer to the bucket at key
+
+        for each Entry e in the bucket
+            // these if statements check for accidental collisions
+            // comparing the sizes is O(1) and is a good first line of defence against accidental collisions
+            if the sizes of e.sorted and sorted_letters are equal
+                // this comparison ensures the entry and letters are actually anagrams
+                if e.sorted is the same as sorted_letters
+                    callback(e.word)
+
+        This simple lookup function goes to the bucket keyed by calling the hash function on a sorted
+        copy of string letters and finds all anagrams by checking testing equality between the sorted
+        copy against the sorted member of the Entry objects in that bucket, calling callback on the 
+        word member of each member that passes the tests.
+
+
+The "Dictionary functions" section of the code from Dictionary.cpp, provided in the spec, was left unchanged.
+
+=================================================================================================================
+
+I had no significant problems while developing this code. My code passes all performance tests successfully on 
+g32fast and my program takes approximately 8.7 milliseconds to run a lookup.
