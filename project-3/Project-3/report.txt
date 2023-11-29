@@ -1,0 +1,369 @@
+﻿CS 32, Project 3, report.txt
+Name: Niklas Leet
+UID: 405795083
+Date: 5/30/2023
+
+1.	A description of the design of your classes. We know what the public interfaces are, but what about your implementations: 
+	What are the major data structures that you use? What private member functions or helper non-member functions did you define
+	for what purpose?
+
+	class Board:
+		- notable public members:
+			*	bool sow(Side s, int hole, Side& endSide, int& endHole);
+				
+				Sows beans from the specified hole if that hole is valid; returns true if beans were sowed successfully, false 
+				otherwise. Calls convertHole to switch to internal hole numbering scheme, which simplifies the for loop that
+				sows the beans. For each available bean, loop decrements from hole 6 to 0 (POT), alternating sides after each
+				completed loop (decrementing for loop results in anticlockwise rotation). 
+
+		- notable private members:
+			*	std::vector<std::vector<int>> m_board = std::vector<std::vector<int>>(NSIDES);
+				
+				A vector of two vectors, each of which is filled with ints representing the holes on each side upon construction.
+
+
+			*	bool isValidHole(int hole) const;
+				
+				Returns true if the given hole is a valid hole or pot number
+
+			*	int convertHole(Side s, int hole) const; 
+				
+				Converts to and from the internal and external hole numbering conventions
+				internal numbering scheme:
+								1	2	3	4	5	6
+					(N POT)	0							0 (S POT)
+								6	5	4	3	2	1
+					external numbering scheme (used by interface):
+								1	2	3	4	5	6
+					(N POT)	0							0 (S POT)
+								1	2	3	4	5	6
+				
+		class Game:
+			- notable public members:
+				*	bool move(Side s);
+
+					Calls chooseMove on the player playing the specified side. Sweeps the board if game has ended (chooseMove)
+					returns an invalid value. Otherwise, performs the move by sowing and attempting a capture until the current
+					player no longer has any extra turns.
+
+				*	void play();
+
+					Display the initial board state, play the game by alternating calls to move() with each player until it ends. 
+					If both players are non-interactive, prompt the user to press enter between moves. Set the member variables
+					representing the game status accordingly when the game ends.
+
+			- notable private members:
+				*	Player* m_np;		:	The north player
+				*	Player* m_sp;		:	The south player
+				*	Player* m_p[2];		:	An array containing the north and south players
+				*	Board m_b;			:	The game board
+				*	bool m_over;		:	A boolean reporting whether the game has ended
+				*	bool m_hasWinner;	:	A booleans reporting whether the game has a winner
+				*	Side m_winner;		:	The side that won the game (initialized to SOUTH)
+
+
+		class Player:
+			
+			SmartPlayer
+				- notable public members:
+					*	virtual int chooseMove(const Board& b, Side s) const;
+						
+						(Implentation detailed in following section.)
+
+				- notable private members:
+					*	int simulateTurn(Board& b, Side s, int move) const;
+						
+						Simulates a move from the parameter hole on the Board b, and if this move would result
+						in an extra turn, this function calls itself recursively to resolve the turn with the
+						choice of hole that yields the greatest value. (algorithm detailed later in report)
+					
+					*	void minimax(const Board& b, Side s, int& bestHole, int& value,int depth, double timeLimit, JumpyTimer& timer) const;
+
+						Minimax algorithm generates tree of possible moves to the depth specified by 
+						the third parameter or until the time limit is reached. SOUTH player maximizes 
+						value, NORTH player minimizes value. The actor alternates with every recursive call. 
+						Side s is the player taking the current move, bestHole is set to the best move for 
+						that player, and value is set to the value of that move. (algorithm detailed later in report)
+
+					*	int evaluate(const Board& b, Side s, Side endSide, int endHole) const;
+
+						Hueristic to evaluate the current board state. (Implentation detailed in following section.)
+						Hueristic to evaluate the current board state, returns a score. Larger score is better 
+						for SOUTH, smaller score is better for NORTH. The score is based on the difference 
+						between the current player and his or her opponent's beans. The value of beans in the 
+						pot are weighted twice as heavily as the value of beans in the pots. If the current
+						board state represents the end of the game, score becomes the best possible value
+						for the winner (positive or negative infinity for SOUTH or NORTH, respectively), 
+						or zero in the case of a tie.
+
+					*	int bestForSide(Side s, int v1, int v2) const;
+
+						Returns the best of the two provided values for the specified side: the maximum 
+						of the two for the SOUTH side, or the minimum for the NORTH side.
+
+
+2.	a description of your design for SmartPlayer::chooseMove, including what heuristics you used to evaluate board positions.
+
+	SmartPlayer::chooseMove:
+			
+			Interface for chooseMove calls minimax to determine the best move, searching to a tree
+			depth specified by the third parameter in minimax(). Minimax algorithm generates tree
+			of possible moves to the depth specified by the third parameter. SOUTH player maximizes 
+			value, NORTH player minimizes value. The actor alternates with every recursive call. 
+			Side s is the player  taking the current move, bestHole is set to the best move for that 
+			player. minimax() calls simulateTurn() to resolve an entire turn at once, making the best
+			possible choices for any extra moves.
+
+	Hueristic:	
+		
+		SmartPlayer::evaluate(const Board& b, Side s, Side endSide, int endHole) const
+
+		Hueristic to evaluate the current board state, returns a score. Larger score is better 
+		for SOUTH, smaller score is better for NORTH. The score is based on the difference 
+		between the current player and his or her opponent's beans. The value of beans in the 
+		pot are weighted twice as heavily as the value of beans in the pots. If the current
+		board state represents the end of the game, score becomes the best possible value
+		for the winner (positive or negative infinity for SOUTH or NORTH, respectively), 
+		or zero in the case of a tie.
+
+		Pseudocode:
+
+			int SmartPlayer::evaluate(const Board& b, Side s, Side endSide, int endHole) const
+				int score = (2 * b.beans(SOUTH, POT) + b.beansInPlay(SOUTH)) 
+							- (2 * b.beans(NORTH, POT) + b.beansInPlay(NORTH));
+
+				if (b.beansInPlay(SOUTH) == 0 || b.beansInPlay(NORTH) == 0)
+					if (score > 0)
+						score = INT_MAX;
+					else if (score < 0)
+						score = INT_MIN;
+					else
+						score = 0;
+			
+				return score;
+	
+3.	pseudocode for non-trivial algorithms.
+
+	*	void SmartPlayer::minimax(const Board& b, Side s, int depth, int& bestHole, int& value) const:
+		
+		Pseudocode:
+
+			if game is over or the depth limit is reached
+				bestHole = -1
+				value = evaluate(b, s, s, bestHole)
+				return
+
+			int tempBestHole = 0
+			int tempBestVal = [worst possible value for Side s]
+
+			for possible moves i in the current board state
+				copy the board
+				simulateTurn(copy, s, i)
+				minimax(copy, opponent(s), depth - 1, bestHole, value)
+
+				if value is the better than tempBestVal for the the current side
+					tempBestVal = value
+					tempBestHole = i
+
+			bestHole = tempBestHole
+
+	*	SmartPlayer::simulateTurn(Board& b, Side s, int hole) const
+
+		Pseudocode:
+			
+			Side endSide
+			int endHole
+
+			sow from the current hole
+			attempt a capture in the hole opposite endHole, endSide
+
+			if game is over
+				sweep the board
+				return evaluate(b, s, endSide, endHole)
+
+			if the player playing Side s has an extra turn
+				int bestVal = [worst value for Side s]
+
+				for possible moves i in the current board state
+					copy the board
+					int value = simulateTurn(copy, s, i)
+					
+					if value is better than bestVal
+						bestVal = value
+
+				return bestVal
+
+			return evaluate(b, s, endSide, endHole)
+
+
+
+4.	a note about any known bugs, serious inefficiencies, or notable problems you had.
+
+	No known bugs. SmartPlayer does not play perfectly and does not always take extra turns (although I do not know 
+	if it's actually always advantageous to do so). Hence, some improvements could be made to the evaluate() function
+	to encourage SmartPlayer to take extra turns and discourage landing on the opponent's side (though I think the 
+	later aspect is captured by the difference in beans on the boards in the current scoring formula). 
+
+	By delegating the choice of move in extra turns in the minimax tree to a separate minimax algorithm (in simulateTurn),
+	chooseMove may incur some performance losses, but I believe this is necessary, as I haven't figured our a way to maintain
+	the alternating structure of the minimax tree without reducing a move and all resulting extra turns to a single node using
+	a second minimax tree.
+
+	I had to make the time limit for minimax() 2.5 seconds, because I could not figure out a way to limit the time taken for
+	simulateMove() to take multiple turns in a row (each individual turn would take the full timeLimit with unlimited search 
+	depth). Instead, I considered that turns would usually take at most 2 moves, and thus alloted half of the 5 seconds for 
+	each move.
+
+
+5.	a list of the test cases that would thoroughly test the functions. Be sure to indicate the purpose of the tests. 
+	Even if you do not correctly implement all the functions, you can still list test cases that would test them. 
+	Don't lose points by thinking "Well, I didn't implement this function, so I won't bother saying how I would have
+	tested it if I had implemented it."
+
+	Test 1:
+
+	#include "Board.h"
+	#include "Side.h"
+	#include <iostream>
+	#include <cassert>
+	using namespace std;
+
+	void doBoardTests()
+	{
+	    Board b(3, 2);
+	    assert(b.holes() == 3  &&  b.totalBeans() == 12  &&
+                        b.beans(SOUTH, POT) == 0  &&  b.beansInPlay(SOUTH) == 6);
+	    b.setBeans(SOUTH, 1, 1);
+	    b.moveToPot(SOUTH, 2, SOUTH);
+	    assert(b.totalBeans() == 11  &&  b.beans(SOUTH, 1) == 1  &&
+	                b.beans(SOUTH, 2) == 0  &&  b.beans(SOUTH, POT) == 2  &&
+			b.beansInPlay(SOUTH) == 3);
+	    Side es;
+	    int eh;
+	    b.sow(SOUTH, 3, es, eh);
+	    assert(es == NORTH  &&  eh == 3  &&  b.beans(SOUTH, 3) == 0  &&
+	                b.beans(NORTH, 3) == 3  &&  b.beans(SOUTH, POT) == 3  &&
+			b.beansInPlay(SOUTH) == 1  &&  b.beansInPlay(NORTH) == 7);
+	}
+
+	int main()
+	{
+	    doBoardTests();
+	    cout << "Passed all tests" << endl;
+	}
+
+	Test 2:
+
+	#include "Player.h"
+	#include "Board.h"
+	#include "Side.h"
+	#include <iostream>
+	#include <cassert>
+	using namespace std;
+
+	void doPlayerTests()
+	{
+	    HumanPlayer hp("Marge");
+	    assert(hp.name() == "Marge"  &&  hp.isInteractive());
+	    BadPlayer bp("Homer");
+	    assert(bp.name() == "Homer"  &&  !bp.isInteractive());
+	    SmartPlayer sp("Lisa");
+	    assert(sp.name() == "Lisa"  &&  !sp.isInteractive());
+	    Board b(3, 2);
+	    b.setBeans(SOUTH, 2, 0);
+	    cout << "=========" << endl;
+	    int n = hp.chooseMove(b, SOUTH);
+	    cout << "=========" << endl;
+	    assert(n == 1  ||  n == 3);
+	    n = bp.chooseMove(b, SOUTH);
+	    assert(n == 1  ||  n == 3);
+	    n = sp.chooseMove(b, SOUTH);
+	    assert(n == 1  ||  n == 3);
+	}
+
+	int main()
+	{
+	    doPlayerTests();
+	    cout << "Passed all tests" << endl;
+	}
+
+	Test 3:
+
+	#include "Game.h"
+	#include "Player.h"
+	#include "Board.h"
+	#include "Side.h"
+	#include <iostream>
+	#include <cassert>
+	using namespace std;
+
+	void doGameTests()
+	{
+	    BadPlayer bp1("Bart");
+	    BadPlayer bp2("Homer");
+	    Board b(3, 0);
+	    b.setBeans(SOUTH, 1, 2);
+	    b.setBeans(NORTH, 2, 1);
+	    b.setBeans(NORTH, 3, 2);
+	    Game g(b, &bp1, &bp2);
+	    bool over;
+	    bool hasWinner;
+	    Side winner;
+	      //    Homer
+	      //   0  1  2
+	      // 0         0
+	      //   2  0  0
+	      //    Bart
+	    g.status(over, hasWinner, winner);
+	    assert(!over && g.beans(NORTH, POT) == 0 && g.beans(SOUTH, POT) == 0 &&
+		g.beans(NORTH, 1) == 0 && g.beans(NORTH, 2) == 1 && g.beans(NORTH, 3) == 2 &&
+		g.beans(SOUTH, 1) == 2 && g.beans(SOUTH, 2) == 0 && g.beans(SOUTH, 3) == 0);
+
+	    g.move(SOUTH);
+	      //   0  1  0
+	      // 0         3
+	      //   0  1  0
+	    g.status(over, hasWinner, winner);
+	    assert(!over && g.beans(NORTH, POT) == 0 && g.beans(SOUTH, POT) == 3 &&
+		g.beans(NORTH, 1) == 0 && g.beans(NORTH, 2) == 1 && g.beans(NORTH, 3) == 0 &&
+		g.beans(SOUTH, 1) == 0 && g.beans(SOUTH, 2) == 1 && g.beans(SOUTH, 3) == 0);
+
+	    g.move(NORTH);
+	      //   1  0  0
+	      // 0         3
+	      //   0  1  0
+	    g.status(over, hasWinner, winner);
+	    assert(!over && g.beans(NORTH, POT) == 0 && g.beans(SOUTH, POT) == 3 &&
+		g.beans(NORTH, 1) == 1 && g.beans(NORTH, 2) == 0 && g.beans(NORTH, 3) == 0 &&
+		g.beans(SOUTH, 1) == 0 && g.beans(SOUTH, 2) == 1 && g.beans(SOUTH, 3) == 0);
+
+	    g.move(SOUTH);
+	      //   1  0  0
+	      // 0         3
+	      //   0  0  1
+	    g.status(over, hasWinner, winner);
+	    assert(!over && g.beans(NORTH, POT) == 0 && g.beans(SOUTH, POT) == 3 &&
+		g.beans(NORTH, 1) == 1 && g.beans(NORTH, 2) == 0 && g.beans(NORTH, 3) == 0 &&
+		g.beans(SOUTH, 1) == 0 && g.beans(SOUTH, 2) == 0 && g.beans(SOUTH, 3) == 1);
+
+	    g.move(NORTH);
+	      //   0  0  0
+	      // 1         4
+	      //   0  0  0
+	    g.status(over, hasWinner, winner);
+	    assert(over && g.beans(NORTH, POT) == 1 && g.beans(SOUTH, POT) == 4 &&
+		g.beans(NORTH, 1) == 0 && g.beans(NORTH, 2) == 0 && g.beans(NORTH, 3) == 0 &&
+		g.beans(SOUTH, 1) == 0 && g.beans(SOUTH, 2) == 0 && g.beans(SOUTH, 3) == 0);
+	    assert(hasWinner && winner == SOUTH);
+	}
+
+	int main()
+	{
+	    doGameTests();
+	    cout << "Passed all tests" << endl;
+	}
+
+	Test 4:
+
+	Ensure SmartPlayer always beats BadPlayer.
+

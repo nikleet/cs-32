@@ -1,0 +1,6 @@
+﻿  Game.cpp
+  Player.cpp
+  main.cpp
+  Generating Code...
+C:\Users\Niklas\Projects\C++\cs-32\project-3\project-3-test\Player.cpp(128): warning C4715: 'SmartPlayer::fakeMove': not all control paths return a value
+  project-3-test.vcxproj -> C:\Users\Niklas\Projects\C++\cs-32\project-3\project-3-test\x64\Debug\project-3-test.exe
