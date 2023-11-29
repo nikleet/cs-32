@@ -1,0 +1,111 @@
+1e.	A reallocation occurs when the new MAGICs are pushed back onto the vector 
+	after k = 2. This reallocation moves the vector in memory and invalidates
+	the iterators used to loop through the vector. The program crashes and
+	interprets the error as an attempt to iterate the iterator p past the 
+	end of the vector.
+
+3.	A call to Sequence<Coord>::insert should insert the provided argument into
+	the Sequence before the first element that is <= the argument or at the
+	end of the Sequence if no such element exists. Calls to this function
+	template require the comparison operators to be defined for the typename.
+	Comparison operators are not defined for the Coord class, so this call to
+	insert fails to compile. 
+
+4b.	Part 4a could not be solved by using a function with only one parameter,
+	because recursive function requires a second parameter to record the
+	history of recursive calls before it. In other words, each recursive call
+	must know the path preceding it and carry this information through to 
+	subsequent recursive calls so the path to each element in the tree of
+	hierarchy can be printed appropriately.
+
+5a.	The time complexity is O(N^3) because there are three nested for loops 
+	that run N times each (and all other operations are lower order).
+
+	const int N = some value;
+	bool hasCommunicatedWith[N][N];
+	...
+	int numIntermediaries[N][N];
+	for (int i = 0; i < N; i++) <== O(n^3)
+	{ <== O(n^2)
+	    numIntermediaries[i][i] = -1;  // the concept of intermediary
+	                                   // makes no sense in this case
+	    for (int j = 0; j < N; j++) <== O(n^2)
+	    {	<== O(n)
+	        if (i == j)	<== O(1)
+	            continue;
+	        numIntermediaries[i][j] = 0;	<== O(1)
+	        for (int k = 0; k < N; k++)	<== O(n)
+	        {
+	            if (k == i  ||  k == j)	<== O(1)
+	                continue;
+	            if (hasCommunicatedWith[i][k]  &&  hasCommunicatedWith[k][j])	<== O(1)
+	                numIntermediaries[i][j]++;	<== O(1)
+	        }
+	    }
+	}
+
+5b.	The time complexity is still O(N^3), or N^3 with a smaller constant of proportionality,
+	meaning that this algorithm is faster, yet essentially comparable to the algorithm in 5a.
+
+	const int N = some value;
+		bool hasCommunicatedWith[N][N];
+		...
+		int numIntermediaries[N][N];
+		for (int i = 0; i < N; i++) <== O(N) * O(N) * O(N)
+		{
+			numIntermediaries[i][i] = -1;  // the concept of intermediary
+										   // makes no sense in this case
+			for (int j = 0; j < i; j++)  // loop limit is now i, not N		<== O(N) * C * O(N) = O(N^2)
+			{
+				numIntermediaries[i][j] = 0;
+				for (int k = 0; k < N; k++) <== O(N)
+				{
+					if (k == i  ||  k == j)
+						continue;
+					if (hasCommunicatedWith[i][k]  &&  hasCommunicatedWith[k][j])
+						numIntermediaries[i][j]++;
+				}
+				numIntermediaries[j][i] = numIntermediaries[i][j];
+			}
+		}
+
+6a.	The time complexity is O(N^2) because each of two searches of the sequence 
+	(each call to get()) are contained within two for loops (O(N)), resulting
+	in 2*O(N^2) time. The constant factor is then dropped.
+
+	void concatReverse(const Sequence& seq1, const Sequence& seq2, Sequence& result)
+		{ <== 2 * O(N^2)
+			Sequence res;
+	
+			for (int k = seq1.size() - 1; k >= 0; k--) <== O(N^2)
+			{
+				ItemType v;
+				seq1.get(k, v); <== O(N)
+				res.insert(res.size(), v); <== O(1)
+			}
+
+			for (int k = seq2.size() - 1; k >= 0; k--) <== O(N^2)
+			{
+				ItemType v;
+				seq2.get(k, v); <== O(N)
+				res.insert(res.size(), v); <== O(1)
+			}
+
+			result.swap(res);
+		}
+
+6b.	The time complexity is O(N) because each insertion is O(1) and each loop is O(N).
+	
+	void Sequence::concatReverse(const Sequence& seq1, const Sequence& seq2)
+	{
+	    Sequence res;
+
+	    for (Node* p = seq1.m_head->m_prev; p != seq1.m_head; p = p->m_prev)	<== O(N)
+	        res.insertBefore(res.m_head, p->m_value);	<== O(1)
+	    for (Node* p = seq2.m_head->m_prev; p != seq2.m_head; p = p->m_prev)	<== O(N)
+	        res.insertBefore(res.m_head, p->m_value);	<== O(1)
+
+	      // Swap *this with res
+	    swap(res);
+	      // Old value of *this (now in res) is destroyed when function returns.
+	}
